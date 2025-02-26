@@ -1,5 +1,6 @@
 from abc import abstractmethod
 import pandas as pd
+import numpy as np
 
 class BaseStrategy:
    def __init__(self, data, cash=100000, commission=0.001):
