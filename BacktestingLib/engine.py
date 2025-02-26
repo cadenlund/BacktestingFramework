@@ -1,5 +1,10 @@
+import pandas as pd
+
+from BacktestingLib.Strategies.MovingAverageCrossover import MovingAverageCrossover
+
+
 class BacktestEngine:
-    def __init__(self, strategy, data):
+    def __init__(self, strategy,  data):
 
         self.strategy = strategy
         self.data = data

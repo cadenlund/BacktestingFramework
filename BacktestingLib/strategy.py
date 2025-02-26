@@ -24,29 +24,32 @@ class BaseStrategy:
        self.trades = []
        self.logs = []
 
-   def start(self, index):
-       self.logs.append("Starting Backtest .......")
+   def start(self):
+       pass
 
-   def end(self, index):
+   def end(self):
        self.logs.append("Backtest Ended")
        self.evaluate()
 
    def next(self, index):
+       # Forward fill the last known position
+       if index != self.data.index[0]:  # Not the first index
+           prev_index = self.data.index[self.data.index.get_loc(index) - 1]
+           self.positions.loc[index] = self.positions.loc[prev_index]
+
        #Called at each timestep
        self.calculate_signals(index)
        self.rebalance(index)
 
        # Update portfolio value
        self.portfolio_value[index] = (self.positions.loc[index] * self.data.loc[index]).sum() + self.cash
+       print(self.positions.loc[index])
 
    def evaluate(self):
        # Calculate Returns
        returns = self.portfolio_value.pct_change().dropna()
        sharpe_ratio = returns.mean() / returns.std() * np.sqrt(252)
        total_return = (self.portfolio_value.iloc[-1] - self.initial_cash) / self.initial_cash
-
-       # Calculate Profit Over Time
-       profit = self.portfolio_value - self.initial_cash
 
        # Calculate Max Drawdown Over Time
        rolling_max = self.portfolio_value.cummax()
@@ -58,12 +61,12 @@ class BaseStrategy:
        self.logs.append(f"Total Return: {total_return * 100:.2f}%")
        self.logs.append(f"Max Drawdown: {max_drawdown.min() * 100:.2f}%")
 
-       # Plot Profit Over Time
+       # Plot Total Portfolio Value Over Time
        plt.figure(figsize=(14, 7))
-       plt.plot(profit, label='Profit Over Time', color='green')
-       plt.title('Profit Over Time')
+       plt.plot(self.portfolio_value, label='Total Portfolio Value', color='blue')
+       plt.title('Total Portfolio Value Over Time')
        plt.xlabel('Date')
-       plt.ylabel('Profit ($)')
+       plt.ylabel('Portfolio Value ($)')
        plt.legend()
        plt.grid(True)
        plt.show()
@@ -124,7 +127,8 @@ class BaseStrategy:
            self.trades.append(trade)
            self.logs.append(f"{trade_type} {shares} shares of {ticker} at {price} on {index}")
        else:
-           self.logs.append(f"Insufficient cash to buy {shares} shares of {ticker} on {index}")
+           pass
+            #self.logs.append(f"Insufficient cash to buy {shares} shares of {ticker} on {index}")
 
    def sell(self, ticker, index, shares):
        """
