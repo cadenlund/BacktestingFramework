@@ -56,20 +56,29 @@ class BaseStrategy:
         pass
 
    def buy(self, ticker, index, shares):
-       #calculate how much it is going to cost plus some fee based on the commission
+       """
+       Buy shares of a stock to increase long or reduce short position.
+
+       - If long, increases the position.
+       - If short, reduces the short position (buy to cover).
+       """
        price = self.data.loc[index, ticker]
        total_cost = shares * price
        commission_cost = total_cost * self.commission
        net_total = total_cost + commission_cost
 
-       #Next, we check if we have cash available and if we do then we add a trade record.
+       # Check if enough cash is available
        if self.cash >= net_total:
+           # Increase position (long or reducing short)
            self.positions.loc[index, ticker] += shares
            self.cash -= net_total
 
+           # Determine trade type for logging
+           trade_type = 'Buy' if self.positions.loc[index, ticker] >= 0 else 'Cover'
+
            # Record the trade
            trade = {
-               'Type': 'Buy',
+               'Type': trade_type,
                'Ticker': ticker,
                'Shares': shares,
                'Price': price,
@@ -79,39 +88,49 @@ class BaseStrategy:
                'Cash Balance': self.cash,
                'Date': index
            }
-
            self.trades.append(trade)
-           self.logs.append(f"Bought {shares} shares of {ticker} at {price} on {index}")
+           self.logs.append(f"{trade_type} {shares} shares of {ticker} at {price} on {index}")
        else:
            self.logs.append(f"Insufficient cash to buy {shares} shares of {ticker} on {index}")
 
    def sell(self, ticker, index, shares):
-       """Sell shares of a stock"""
+       """
+       Sell shares of a stock to decrease long or increase short position.
+
+       - If long, decreases the position.
+       - If no position, goes short.
+       - If already short, increases the short position.
+       """
        price = self.data.loc[index, ticker]
        total_revenue = shares * price
        commission_cost = total_revenue * self.commission
        net_revenue = total_revenue - commission_cost
 
-       # Check if enough shares are available to sell
-       if self.positions.loc[index, ticker] >= shares:
-           # Update positions and cash
-           self.positions.loc[index, ticker] -= shares
-           self.cash += net_revenue
+       # Decrease position (long or increasing short)
+       self.positions.loc[index, ticker] -= shares
+       self.cash += net_revenue
 
-           # Record the trade
-           trade = {
-               'Type': 'Sell',
-               'Ticker': ticker,
-               'Shares': shares,
-               'Price': price,
-               'Total': total_revenue,
-               'Commission': commission_cost,
-               'Net Total': net_revenue,
-               'Cash Balance': self.cash,
-               'Date': index
-           }
-           self.trades.append(trade)
-           self.logs.append(f"Sold {shares} shares of {ticker} at {price} on {index}")
+       # Determine trade type for logging
+       if self.positions.loc[index, ticker] < 0:
+           trade_type = 'Short'
+       elif self.positions.loc[index, ticker] == 0:
+           trade_type = 'Close'
        else:
-           self.logs.append(f"Insufficient shares to sell {shares} of {ticker} on {index}")
+           trade_type = 'Sell'
+
+       # Record the trade
+       trade = {
+           'Type': trade_type,
+           'Ticker': ticker,
+           'Shares': shares,
+           'Price': price,
+           'Total': total_revenue,
+           'Commission': commission_cost,
+           'Net Total': net_revenue,
+           'Cash Balance': self.cash,
+           'Date': index
+       }
+       self.trades.append(trade)
+       self.logs.append(f"{trade_type} {shares} shares of {ticker} at {price} on {index}")
+
 
