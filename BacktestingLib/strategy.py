@@ -1,6 +1,8 @@
 from abc import abstractmethod
 import pandas as pd
 import numpy as np
+from matplotlib import pyplot as plt
+
 
 class BaseStrategy:
    def __init__(self, data, cash=100000, commission=0.001):
@@ -38,13 +40,43 @@ class BaseStrategy:
        self.portfolio_value[index] = (self.positions.loc[index] * self.data.loc[index]).sum() + self.cash
 
    def evaluate(self):
-       #Calculate performance metrics
+       # Calculate Returns
        returns = self.portfolio_value.pct_change().dropna()
        sharpe_ratio = returns.mean() / returns.std() * np.sqrt(252)
        total_return = (self.portfolio_value.iloc[-1] - self.initial_cash) / self.initial_cash
 
+       # Calculate Profit Over Time
+       profit = self.portfolio_value - self.initial_cash
+
+       # Calculate Max Drawdown Over Time
+       rolling_max = self.portfolio_value.cummax()
+       drawdown = (self.portfolio_value - rolling_max) / rolling_max
+       max_drawdown = drawdown.cummin()
+
+       # Log the Metrics
        self.logs.append(f"Sharpe Ratio: {sharpe_ratio:.2f}")
        self.logs.append(f"Total Return: {total_return * 100:.2f}%")
+       self.logs.append(f"Max Drawdown: {max_drawdown.min() * 100:.2f}%")
+
+       # Plot Profit Over Time
+       plt.figure(figsize=(14, 7))
+       plt.plot(profit, label='Profit Over Time', color='green')
+       plt.title('Profit Over Time')
+       plt.xlabel('Date')
+       plt.ylabel('Profit ($)')
+       plt.legend()
+       plt.grid(True)
+       plt.show()
+
+       # Plot Max Drawdown Over Time
+       plt.figure(figsize=(14, 7))
+       plt.plot(max_drawdown, label='Max Drawdown Over Time', color='red')
+       plt.title('Max Drawdown Over Time')
+       plt.xlabel('Date')
+       plt.ylabel('Drawdown (%)')
+       plt.legend()
+       plt.grid(True)
+       plt.show()
 
    @abstractmethod
    def calculate_signals(self, index):
